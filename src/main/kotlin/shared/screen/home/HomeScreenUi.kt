@@ -123,69 +123,69 @@ fun HomeScreenUi(
 //            }
 //        }
 
-        var animes by remember { mutableStateOf<List<Anime>>(listOf()) }
-
-        LaunchedEffect(Unit) {
-            ShikimoriApi.anime.getAnimes(
-                AnimeQuery(
-                    order = AnimeOrder.POPULARITY,
-                    season = "fall_2021",
-                    limit = 50
-                )
-            ).onSuccess {
-                animes = it
-            }.onFailure {
-                println(it)
-            }
-            ShikimoriApi.anime.getAnimes(
-                AnimeQuery(
-                    order = AnimeOrder.POPULARITY,
-                    season = "fall_2021",
-                    limit = 50,
-                    page = 2
-                )
-            ).onSuccess {
-                animes = animes + it
-            }.onFailure {
-                println(it)
-            }
-        }
-
-        Box(
-            Modifier.clip(RoundedCornerShape(4.dp)).clipToBounds()
-        ) {
-            Carousel(rememberCarouselState()) {
-                animes.forEach {
-                    Column(
-                        Modifier
-                            .padding(10.dp)
-                            .width(220.dp)
-                    ) {
-                        AsyncImage(
-                            url = it.image.original,
-                            modifier = Modifier.clip(RoundedCornerShape(4.dp))
-                        )
-                        Text(
-                            text = it.russian,
-                            textAlign = TextAlign.Center,
-                            fontSize = 16.sp,
-                            modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
-                        )
-                    }
-                }
-            }
-        }
+//        var animes by remember { mutableStateOf<List<Anime>>(listOf()) }
+//
+//        LaunchedEffect(Unit) {
+//            ShikimoriApi.anime.getAnimes(
+//                AnimeQuery(
+//                    order = AnimeOrder.POPULARITY,
+//                    season = "fall_2021",
+//                    limit = 50
+//                )
+//            ).onSuccess {
+//                animes = it
+//            }.onFailure {
+//                println(it)
+//            }
+//            ShikimoriApi.anime.getAnimes(
+//                AnimeQuery(
+//                    order = AnimeOrder.POPULARITY,
+//                    season = "fall_2021",
+//                    limit = 50,
+//                    page = 2
+//                )
+//            ).onSuccess {
+//                animes = animes + it
+//            }.onFailure {
+//                println(it)
+//            }
+//        }
+//
+//        Box(
+//            Modifier.clip(RoundedCornerShape(4.dp)).clipToBounds()
+//        ) {
+//            Carousel(rememberCarouselState()) {
+//                animes.forEach {
+//                    Column(
+//                        Modifier
+//                            .padding(10.dp)
+//                            .width(220.dp)
+//                    ) {
+//                        AsyncImage(
+//                            url = it.image.original,
+//                            modifier = Modifier.clip(RoundedCornerShape(4.dp))
+//                        )
+//                        Text(
+//                            text = it.russian,
+//                            textAlign = TextAlign.Center,
+//                            fontSize = 16.sp,
+//                            modifier = Modifier.fillMaxWidth().padding(top = 5.dp)
+//                        )
+//                    }
+//                }
+//            }
+//        }
 
         var isTextDeleted by remember { mutableStateOf(true) }
         AniJinRichText(
             annotatedString = buildAniJinAnnotatedString(
-                text = "これは日本人です; Это русский; backgroundText in 992 y. 2H \nThis ᴴᴰ is English [span color=\"#0000\" background=\"#424242\"  selectionColor=\"#ffffff\"]Text[/span]\nText On Placed Yeeee"
+                text = "これは日本人です; Это русский; backgroundText in 992 y. 2H\nThis ᴴᴰ is English [span color=\"#0000\" background=\"#424242\"]Text[/span]\nText On Placed Yeeee"
             ) {
-                appendStyle(richStyle = RichStyle(selectionColor = Color.Black)) { Regex("(.*)").findAll(it) }
                 appendStyle(richStyle = RichStyle(color = Color.Gray)) { Regex("[0-9]").findAll(it) }
                 appendStyle(richStyle = RichStyle(color = Color.Gray)) { Regex("<(.*?)>").findAll(it) }
                 appendStyle(richStyle = RichStyle(fontStyle = FontStyle.ITALIC)) { Regex("Text").findAll(it) }
                 appendStyle(richStyle = RichStyle(fontStyle = FontStyle.BOLD)) { Regex("This is English").findAll(it) }
+                appendStyle(richStyle = RichStyle(underLine = true, underLineColor = Color.Red, underLineWidth = 2f)) { Regex("Это русский").findAll(it) }
                 appendStyle(
                     richStyle = RichStyle(
                         background = Color(0xff424242),
@@ -209,7 +209,6 @@ fun HomeScreenUi(
                         resParameters
                     }
                     val pattern = "\\[span${regexParameters()} *\\](?<content>[\\s\\S]*?)\\[\\/span\\]"
-                    println(pattern)
                     val regex = Regex(pattern)
                     regex.findAll(text).forEach {
                         for (parameter in parametersString)
@@ -235,9 +234,6 @@ fun HomeScreenUi(
                 }
             },
             selectionBackground = Color.Blue,
-            onSelection = { text, range ->
-
-            },
             fontSize = 20.sp
         )
         Button(

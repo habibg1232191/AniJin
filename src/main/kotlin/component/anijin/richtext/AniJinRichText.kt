@@ -13,6 +13,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -27,21 +28,20 @@ import kotlin.math.max
 @Composable
 fun AniJinRichText(
     annotatedString: AniJinAnnotatedString,
-    onSelection: ((String, IntRange) -> Unit)? = null,
+    onSelection: ((String) -> Unit)? = null,
     selectionBackground: Color = Color.Blue,
     fontSize: TextUnit = 16.sp
 ) {
-    var font by remember { mutableStateOf(Font(typeface = null, size = fontSize.value)) }
     val fill by remember { mutableStateOf(Paint().setARGB(1, 250, 250, 250).setAlphaf(1f)) }
 
     var isSelection by remember { mutableStateOf(false) }
     var isFirstSelection by remember { mutableStateOf(false) }
+    var isTap by remember { mutableStateOf(false) }
 
-    var dragOffsetStart by remember { mutableStateOf(Offset.Zero) }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
 
-    var startSelectionIndex by remember { mutableStateOf(-2) }
-    var endSelectionIndex by remember { mutableStateOf(-2) }
+    var startSelectionIndex by remember { mutableStateOf(0) }
+    var endSelectionIndex by remember { mutableStateOf(0) }
 
     var sizeTextBlock by remember { mutableStateOf(Size.Zero) }
 
@@ -56,7 +56,6 @@ fun AniJinRichText(
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
-                        dragOffsetStart = it
                         isSelection = true
                         isFirstSelection = true
                     },
@@ -69,8 +68,10 @@ fun AniJinRichText(
                 detectTapGestures(
                     onTap = {
                         isSelection = false
-                        startSelectionIndex = -2
-                        endSelectionIndex = -2
+                        isTap = true
+                        startSelectionIndex = 0
+                        endSelectionIndex = 0
+                        onSelection?.invoke("")
                     }
                 )
             }
@@ -84,6 +85,8 @@ fun AniJinRichText(
             paint.alpha = 0.4f
 
             var isContinue: Boolean
+            var isFist = true
+            var font: Font
             annotatedString.text.forEachIndexed { index, char ->
                 isContinue = true
                 annotatedString.replaceRange.forEach { range ->
@@ -106,36 +109,31 @@ fun AniJinRichText(
                     val richLine = TextLine.make(char.toString(), font)
                     if(isSelection) {
                         val coordinates = xOffsetText + richLine.width
-
                         if(dragOffset.y > yOffsetText-font.metrics.xHeight/2 && dragOffset.y < yOffsetText + richLine.capHeight + font.metrics.xHeight/2) {
                             if(coordinates - richLine.width/2 > dragOffset.x && isFirstSelection) {
-                                startSelectionIndex = index - 1
+                                startSelectionIndex = index
                                 isFirstSelection = false
                             }
-                            if(coordinates - richLine.width/2 < dragOffset.x) {
-                                endSelectionIndex = index
+                            if(coordinates - richLine.width/2 > dragOffset.x && isFist) {
+                                endSelectionIndex = if(index >= annotatedString.text.length-1) annotatedString.text.length else index
+                                isFist = false
                             }
-//                            if(dragOffsetStart.x < coordinates - richLine.width/2 && dragOffset.x > coordinates - richLine.width/2) {
-//                                endSelectionIndex = index
-//                            } else if(dragOffsetStart.x > coordinates - richLine.width/2 && dragOffset.x < (xOffsetText + richLine.width) - richLine.width/2) {
-//                                endSelectionIndex = index
-//                            }
-//                            endSelectionIndex = index
-                            println("Index: $index, Range: ${startSelectionIndex until endSelectionIndex + 1}")
                         }
-                        onSelection?.invoke(annotatedString.text, startSelectionIndex until endSelectionIndex + 1)
+                        val textSelection =
+                            if(startSelectionIndex < endSelectionIndex) annotatedString.text.substring(startSelectionIndex, endSelectionIndex)
+                            else annotatedString.text.substring(endSelectionIndex, startSelectionIndex)
+                        onSelection?.invoke(textSelection)
                     }
 
-                    val isSelectedCurrentChar = (index in (startSelectionIndex + 1) until endSelectionIndex + 1) || (index in (endSelectionIndex + 1) until startSelectionIndex)
-
+                    val isSelectedCurrentChar = (index in startSelectionIndex until endSelectionIndex) || (index in endSelectionIndex until startSelectionIndex)
                     if(style != null) {
                         if(style.background != null && !isSelectedCurrentChar) {
                             paint.color = style.background!!
                             it.drawRect(
                                 left = xOffsetText,
                                 right = xOffsetText + richLine.width,
-                                top = yOffsetText-font.metrics.xHeight/2,
-                                bottom = yOffsetText + richLine.capHeight + font.metrics.xHeight/2,
+                                top = yOffsetText-richLine.xHeight/2,
+                                bottom = yOffsetText + richLine.capHeight + richLine.xHeight/2,
                                 paint = paint
                             )
                         }
@@ -145,37 +143,40 @@ fun AniJinRichText(
                         fill.color = Color.White.toArgb()
                     }
 
-                    if(isSelectedCurrentChar) {
+                    if(isSelectedCurrentChar && char.toString() != "\n") {
                         paint.color = selectionBackground
                         style?.let { richStyle ->
                             if(richStyle.selectionColor != null)
-                                fill.color = richStyle.selectionColor.toArgb()
+                                fill.color = richStyle.selectionColor!!.toArgb()
                             if(richStyle.selectionBackground != null)
-                                paint.color = richStyle.selectionBackground
+                                paint.color = richStyle.selectionBackground!!
                         }
                         it.drawRect(
                             left = xOffsetText,
                             right = xOffsetText + richLine.width,
-                            top = yOffsetText-font.metrics.xHeight/2,
-                            bottom = yOffsetText + richLine.capHeight + font.metrics.xHeight/2,
+                            top = yOffsetText-richLine.xHeight/2,
+                            bottom = yOffsetText + richLine.capHeight + richLine.xHeight/2,
                             paint = paint
                         )
                     }
 
-//                    if(style?.underLine != null) {
-//                        it.drawRect(
-//                            left = xOffsetText,
-//                            right = xOffsetText + richLine.width,
-//                            top = yOffsetText-font.metrics.xHeight/2,
-//                            bottom = yOffsetText + richLine.capHeight + font.metrics.xHeight/2,
-//                            paint = paint
-//                        )
-//                    }
+                    if (style != null) {
+                        if(style.underLine) {
+                            paint.color = style.underLineColor ?: Color.White
+                            it.drawRect(
+                                left = xOffsetText,
+                                right = xOffsetText + richLine.width,
+                                top = yOffsetText + richLine.capHeight + 1.5f,
+                                bottom = yOffsetText + richLine.capHeight + ((style.underLineWidth?.plus(1.5f)) ?: 1f),
+                                paint = paint
+                            )
+                        }
+                    }
 
                     if(char.toString() == "\n") {
                         yOffsetText += richLine.capHeight + richLine.xHeight
                         xOffsetText = 0f
-                    }else {
+                    } else {
                         nativeCanvas.drawTextLine(richLine, xOffsetText, yOffsetText + richLine.capHeight, fill)
                         xOffsetText += richLine.width
                     }

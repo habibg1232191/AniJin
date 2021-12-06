@@ -6,11 +6,11 @@ data class AniJinAnnotatedString(
     val rangeStyles: Map<IntRange, RichStyle>,
     val styles: List<RichStyle>
 ) {
-    fun getStyleFromIndex(index: Int): RichStyle? {
-        var resStyle: RichStyle? = null
-        rangeStyles.forEach { (range, i) ->
+    fun getStyleFromIndex(index: Int): RichStyle {
+        val resStyle = RichStyle()
+        rangeStyles.forEach { (range, style) ->
             if(range.contains(index)) {
-                resStyle = i
+                resStyle += style
             }
         }
         return resStyle

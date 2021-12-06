@@ -47,7 +47,6 @@ suspend fun loadPicture(url: String, saveToFile: Boolean = false): Result<ImageB
     val imageName = FilenameUtils.getBaseName(urlImage)
     val imageExtension = if(FilenameUtils.getExtension(urlImage) != "") FilenameUtils.getExtension(urlImage) else "jpg"
     val pathImage = System.getProperty("user.dir") + "/cache/$imageName.$imageExtension"
-    println(pathImage)
 
     BitmapCaching.bitmapCaching.forEach {
         if(it.Url.contentEquals(url)){

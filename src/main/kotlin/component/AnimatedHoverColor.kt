@@ -9,6 +9,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.PointerEventType
+import androidx.compose.ui.input.pointer.onPointerEvent
 import androidx.compose.ui.input.pointer.pointerMoveFilter
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -56,15 +58,11 @@ fun Modifier.hoverColor(
     return this.then(
         Modifier
             .background(animateColor)
-            .pointerMoveFilter(
-                onEnter = {
-                    isHovering = true
-                    false
-                },
-                onExit = {
-                    isHovering = false
-                    false
-                }
-            )
+            .onPointerEvent(PointerEventType.Enter) {
+                isHovering = true
+            }
+            .onPointerEvent(PointerEventType.Exit) {
+                isHovering = false
+            }
     )
 }
