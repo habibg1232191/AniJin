@@ -14,6 +14,9 @@ class AniJinAnnotatedStringBuilder(txt: String) {
     fun appendStyle(richStyle: RichStyle, regex: (String) -> Sequence<MatchResult>) =
         regex(text).forEach { rangeStyles[it.range] = richStyle; styleIndex++ }
 
+    fun appendRangeStyle(richStyle: RichStyle, range: (String) -> IntRange) =
+        replaceRange.add(range(text))
+
     fun appendStyleWithRange(richStyle: RichStyle, range: (String) -> IntRange) {
         rangeStyles[range(text)] = richStyle
     }

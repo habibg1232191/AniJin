@@ -3,34 +3,26 @@ package shared.screen.home
 import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import api.anijin.AniJinApi
-import api.shikimori.ShikimoriApi
-import api.shikimori.models.Anime
-import api.shikimori.models.query.AnimeOrder
-import api.shikimori.models.query.AnimeQuery
-import component.AsyncImage
-import component.Carousel
 import component.anijin.richtext.AniJinRichText
 import component.anijin.richtext.dsl.engine.buildAniJinAnnotatedString
 import component.anijin.richtext.dsl.engine.models.RichStyle
 import component.anijin.richtext.dsl.engine.models.RichStyleRanges
+import component.anijin.richtext.dsl.engine.models.UnderLine
 import component.anijin.richtext.dsl.engine.models.tryGetColor
-import component.rememberCarouselState
 import kotlinx.coroutines.delay
 import org.jetbrains.skia.FontStyle
 import shared.defaultComponentContext.defaultComponentContext
@@ -176,23 +168,75 @@ fun HomeScreenUi(
 //            }
 //        }
 
-        var isTextDeleted by remember { mutableStateOf(true) }
+        var isTextDeleted by remember { mutableStateOf(false) }
+
         AniJinRichText(
             annotatedString = buildAniJinAnnotatedString(
-                text = "これは日本人です; Это русский; backgroundText in 992 y. 2H\nThis ᴴᴰ is English [span color=\"#0000\" background=\"#424242\"]Text[/span]\nText On Placed Yeeee"
+                text = "これは日本人です; Это русский;😁😀😎 backText in 992 y. 2H\nThis ᴴᴰ is English [span color=\"#0000\" background=\"#424242\"]Text[/span]\nText On Placed Yeeee"
             ) {
                 appendStyle(richStyle = RichStyle(color = Color.Gray)) { Regex("[0-9]").findAll(it) }
                 appendStyle(richStyle = RichStyle(color = Color.Gray)) { Regex("<(.*?)>").findAll(it) }
-                appendStyle(richStyle = RichStyle(fontStyle = FontStyle.ITALIC)) { Regex("Text").findAll(it) }
-                appendStyle(richStyle = RichStyle(fontStyle = FontStyle.BOLD)) { Regex("This is English").findAll(it) }
-                appendStyle(richStyle = RichStyle(underLine = true, underLineColor = Color.Red, underLineWidth = 2f)) { Regex("Это русский").findAll(it) }
+                appendStyle(richStyle = RichStyle(fontStyle = FontStyle.BOLD_ITALIC)) { Regex("This ᴴᴰ is English").findAll(it) }
+
                 appendStyle(
                     richStyle = RichStyle(
-                        background = Color(0xff424242),
-                        selectionBackground = Color.Black,
-                        selectionColor = Color.Gray
+                        underLine = UnderLine(strokeWidth = 1.5f, strokeColor = Color.White),
+                        onClick = {
+                            println("Click Text: ${it.text[it.index]}")
+                        },
+                        onMove = {
+                            println("Move Text: ${it.text[it.index]}")
+                        }
                     )
-                ) { Regex("backgroundText").findAll(it) }
+                ) {
+                    Regex("Это русский").findAll(it)
+                }
+
+                appendStyle(
+                    richStyle = RichStyle(
+                        fontStyle = FontStyle.ITALIC,
+                        onClick = {
+                            println(it.text[it.index])
+                        },
+                        onMove = {
+//                            println("Move")
+                        },
+                        onEnter = {
+                            println("Enter")
+                        },
+                        onExit = {
+                            println("Exit")
+                        }
+                    )
+                ) {
+                    Regex("backText").findAll(it)
+                }
+
+                appendStyle(
+                    richStyle = RichStyle(
+                        fontStyle = FontStyle.ITALIC,
+                        onClick = {
+                            println(it.text[it.index])
+                        },
+                        onEnter = {
+                            println("Enter")
+                        },
+                        onExit = {
+                            println("Exit")
+                        }
+                    )
+                ) {
+                    Regex("Text").findAll(it)
+                }
+
+                appendStyle(
+                    richStyle = RichStyle(
+                        background = Color.DarkGray,
+                        selectionBackground = Color.Black,
+                        selectionColor = Color.Gray,
+                        shape = CircleShape
+                    )
+                ) { Regex("background").findAll(it) }
                 appendStyleWithRegex { text ->
                     val resRangeList = mutableListOf<IntRange>()
                     val parametersString = listOf(
@@ -234,7 +278,7 @@ fun HomeScreenUi(
                 }
             },
             selectionBackground = Color.Blue,
-            fontSize = 20.sp
+            fontSize = 26.sp
         )
         Button(
             onClick = { isTextDeleted = !isTextDeleted }

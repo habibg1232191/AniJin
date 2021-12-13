@@ -6,13 +6,29 @@ data class AniJinAnnotatedString(
     val rangeStyles: Map<IntRange, RichStyle>,
     val styles: List<RichStyle>
 ) {
-    fun getStyleFromIndex(index: Int): RichStyle {
+    fun getStyleFromIndex(index: Int): RichStyleAndRange {
         val resStyle = RichStyle()
+        val resRange = mutableListOf<TripleVar<RichStyle, IntRange, Boolean>>()
         rangeStyles.forEach { (range, style) ->
             if(range.contains(index)) {
                 resStyle += style
+                resRange += TripleVar(style, range, false)
             }
         }
-        return resStyle
+        return RichStyleAndRange(
+            richStyle = resStyle,
+            ranges = resRange
+        )
     }
 }
+
+data class RichStyleAndRange(
+    val richStyle: RichStyle,
+    val ranges: List<TripleVar<RichStyle, IntRange, Boolean>>,
+)
+
+data class TripleVar<A, B, C>(
+    var first: A,
+    var two: B,
+    var third: C
+)
