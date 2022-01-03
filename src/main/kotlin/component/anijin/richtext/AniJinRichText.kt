@@ -3,12 +3,9 @@ package component.anijin.richtext
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -18,24 +15,19 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.useResource
-import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.unit.*
+import component.anijin.richtext.dsl.engine.buildAniJinAnnotatedString
 import component.anijin.richtext.dsl.engine.models.AniJinAnnotatedString
 import component.anijin.richtext.dsl.engine.models.MouseRichEvent
+import component.anijin.richtext.dsl.engine.models.RichStyle
 import component.anijin.richtext.dsl.engine.models.RichStyleAndRange
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.awt.Toolkit
 import org.jetbrains.skia.*
-import org.jetbrains.skia.impl.withResult
+import theme.LocalRichStyle
 import java.awt.AWTEvent
-import java.awt.event.AWTEventListener
-import java.awt.event.MouseEvent
-import javax.swing.JFrame
-import javax.swing.JPopupMenu
 import kotlin.math.max
-import kotlin.reflect.typeOf
 
 @ExperimentalComposeUiApi
 @ExperimentalFoundationApi
@@ -44,23 +36,25 @@ fun AniJinRichText(
     annotatedString: AniJinAnnotatedString,
     onSelection: ((String, IntRange) -> Unit)? = null,
     selectionBackground: Color = Color.Blue,
-    fontSize: TextUnit = 16.sp
+    fontSize: TextUnit = 16.sp,
+    fontFamilyData: Data? = null
 ) {
     val fill by remember { mutableStateOf(Paint().setARGB(1, 250, 250, 250).setAlphaf(1f)) }
 
     var isSelection by remember { mutableStateOf(false) }
     var isFirstSelection by remember { mutableStateOf(false) }
     var isFirstDrawing by remember { mutableStateOf(true) }
+    val density = LocalDensity.current
 
-    var density: Density? by remember { mutableStateOf(null) }
-    with(LocalDensity.current) {
-        density = this
+    with(LocalRichStyle.current) {
+        annotatedString.appendStyle(this)
     }
 
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var dragStartOffset by remember { mutableStateOf(Offset.Zero) }
 
-    var startSelectionIndex by remember { mutableStateOf(0) }
-    var endSelectionIndex by remember { mutableStateOf(0) }
+    var startSelectionIndex by remember { mutableStateOf(-1) }
+    var endSelectionIndex by remember { mutableStateOf(-1) }
 
     var sizeTextBlock by remember { mutableStateOf(Size.Zero) }
     var onSizeChanged by remember { mutableStateOf(IntSize.Zero) }
@@ -81,105 +75,110 @@ fun AniJinRichText(
                     onDragStart = {
                         isSelection = true
                         isFirstSelection = true
+                        dragStartOffset = it
                     },
                     onDrag = { change, _ ->
                         dragOffset = change.position
                     }
                 )
             }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onTap = {
-                        isSelection = false
-                        startSelectionIndex = 0
-                        endSelectionIndex = 0
-                        onSelection?.invoke("", IntRange.EMPTY)
+            .onPointerEvent(PointerEventType.Press) {
+                val event = currentEvent
 
-                        richTextDataCollect.forEach { dataCollect ->
-                            val richLine = dataCollect.richLine
-                            val index = dataCollect.index
-                            val (xOffsetText, yOffsetText) = dataCollect.offset
-                            val (style, ranges) = dataCollect.richStyleAndRange
-
-                            ranges.forEach { (styleRange, range) ->
-                                if(it.x > xOffsetText && it.x < xOffsetText + richLine.width && it.y > yOffsetText && it.y < yOffsetText + richLine.capHeight + richLine.xHeight/2 && index in range) {
-                                    styleRange.onClick?.invoke(
-                                        MouseRichEvent(
-                                            richStyle = style,
-                                            mousePosition = it,
-                                            offsetText = Offset(
-                                                x = xOffsetText,
-                                                y = yOffsetText
-                                            ),
-                                            text = annotatedString.text,
-                                            range = range,
-                                            index = index,
-                                            richTextData = richTextDataCollect
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                )
-            }
-            .pointerMoveFilter(
-                onMove = {
-                    if(!isSelection) {
-                        val checkedRange = mutableListOf<IntRange>()
-                        rangesForMouseMoveData.forEachIndexed { i1, (range, isHover) ->
-                            if(range !in checkedRange) {
-                                val firstIndex = range.first
-                                val lastIndex = range.last
-                                val style = richTextDataCollect[range.first].richStyleAndRange.richStyle
-
-                                val richTextDataFirst = richTextDataCollect[firstIndex]
-                                val richTextDataLast = richTextDataCollect[lastIndex]
-
-                                val (xOffsetText, yOffsetText) = richTextDataFirst.offset
-
-                                if(it.x > richTextDataFirst.offset.x && it.x < richTextDataLast.offset.x + richTextDataLast.richLine.width && it.y > richTextDataFirst.offset.y && it.y < richTextDataLast.offset.y + richTextDataLast.richLine.capHeight + richTextDataLast.richLine.xHeight/2) {
-                                    val mouseRichEvent =
-                                        MouseRichEvent(
-                                            richStyle = style,
-                                            mousePosition = it,
-                                            offsetText = Offset(
-                                                x = xOffsetText,
-                                                y = yOffsetText
-                                            ),
-                                            text = annotatedString.text,
-                                            range = range,
-                                            index = range.first,
-                                            richTextData = richTextDataCollect
-                                        )
-                                    if(isHover) style.onMove?.invoke(mouseRichEvent)
-                                    else style.onEnter?.invoke(mouseRichEvent)
-
-                                    rangesForMouseMoveData[i1].isHover = true
-                                } else if(isHover) {
-                                    style.onExit?.invoke(
-                                        MouseRichEvent(
-                                            richStyle = style,
-                                            mousePosition = it,
-                                            offsetText = Offset(
-                                                x = xOffsetText,
-                                                y = yOffsetText
-                                            ),
-                                            text = annotatedString.text,
-                                            range = range,
-                                            index = firstIndex,
-                                            richTextData = richTextDataCollect
-                                        )
-                                    )
-                                    rangesForMouseMoveData[i1].isHover = false
-                                }
-                            }
-                            checkedRange.add(range)
-                        }
-                    }
-                    false
+                if(!event.buttons.isSecondaryPressed) {
+                    isSelection = false
+                    startSelectionIndex = -1
+                    endSelectionIndex = -1
+                    onSelection?.invoke("", IntRange.EMPTY)
                 }
-            )
+            }
+            .onPointerEvent(PointerEventType.Release) {
+                val event = currentEvent
+                val offsetClick = event.changes.first().position
+
+                richTextDataCollect.forEach { dataCollect ->
+                    val richLine = dataCollect.richLine
+                    val index = dataCollect.index
+                    val (xOffsetText, yOffsetText) = dataCollect.offset
+                    val (style, ranges) = dataCollect.richStyleAndRange
+
+                    ranges.forEach { (styleRange, range) ->
+                        if(offsetClick.x > xOffsetText && offsetClick.x < xOffsetText + richLine.width && offsetClick.y > yOffsetText && offsetClick.y < yOffsetText + richLine.capHeight + richLine.xHeight/2 && index in range) {
+                            styleRange.onClick?.invoke(
+                                MouseRichEvent(
+                                    richStyle = style,
+                                    mouseEvent = event,
+                                    offsetText = Offset(
+                                        x = xOffsetText,
+                                        y = yOffsetText
+                                    ),
+                                    text = annotatedString.text,
+                                    range = range,
+                                    index = index,
+                                    richTextData = richTextDataCollect
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+            .onPointerEvent(PointerEventType.Move) {
+                if(!isSelection) {
+                    val event = currentEvent
+                    val offsetMove = event.changes.first().position
+
+                    val checkedRange = mutableListOf<IntRange>()
+                    rangesForMouseMoveData.forEachIndexed { i1, (range, isHover) ->
+                        if(range !in checkedRange) {
+                            val firstIndex = range.first
+                            val lastIndex = range.last
+                            val style = richTextDataCollect[range.first].richStyleAndRange.richStyle
+
+                            val richTextDataFirst = richTextDataCollect[firstIndex]
+                            val richTextDataLast = richTextDataCollect[lastIndex]
+
+                            val (xOffsetText, yOffsetText) = richTextDataFirst.offset
+
+                            if(offsetMove.x > richTextDataFirst.offset.x && offsetMove.x < richTextDataLast.offset.x + richTextDataLast.richLine.width && offsetMove.y > richTextDataFirst.offset.y && offsetMove.y < richTextDataLast.offset.y + richTextDataLast.richLine.capHeight + richTextDataLast.richLine.xHeight/2) {
+                                val mouseRichEvent =
+                                    MouseRichEvent(
+                                        richStyle = style,
+                                        mouseEvent = event,
+                                        offsetText = Offset(
+                                            x = xOffsetText,
+                                            y = yOffsetText
+                                        ),
+                                        text = annotatedString.text,
+                                        range = range,
+                                        index = range.first,
+                                        richTextData = richTextDataCollect
+                                    )
+                                if(isHover) style.onMove?.invoke(mouseRichEvent)
+                                else style.onEnter?.invoke(mouseRichEvent)
+
+                                rangesForMouseMoveData[i1].isHover = true
+                            } else if(isHover) {
+                                style.onExit?.invoke(
+                                    MouseRichEvent(
+                                        richStyle = style,
+                                        mouseEvent = event,
+                                        offsetText = Offset(
+                                            x = xOffsetText,
+                                            y = yOffsetText
+                                        ),
+                                        text = annotatedString.text,
+                                        range = range,
+                                        index = firstIndex,
+                                        richTextData = richTextDataCollect
+                                    )
+                                )
+                                rangesForMouseMoveData[i1].isHover = false
+                            }
+                        }
+                        checkedRange.add(range)
+                    }
+                }
+            }
             .onSizeChanged {
                 richTextDataCollect.clear()
                 rangesForMouseMoveData.clear()
@@ -190,7 +189,8 @@ fun AniJinRichText(
                     fontSize,
                     rangesForMouseMoveData,
                     richTextDataCollect,
-                    it
+                    it,
+                    fontFamilyData,
                 ) { _, _ -> }
             }
     ) {
@@ -203,7 +203,8 @@ fun AniJinRichText(
                 fontSize,
                 rangesForMouseMoveData,
                 richTextDataCollect,
-                onSizeChanged
+                onSizeChanged,
+                fontFamilyData,
             ) { xOffsetText, yOffsetText ->
                 sizeTextBlock = Size(
                     width = max(xOffsetText, sizeTextBlock.width),
@@ -230,14 +231,15 @@ fun AniJinRichText(
                 val char = dataCollect.char
 
                 if(isSelection) {
-                    val coordinates = xOffsetText + richLine.width
+                    val coordinates = xOffsetText + (if(dragStartOffset.x < dragOffset.x) richLine.width else 0f)
+
                     if(dragOffset.y > yOffsetText-font.metrics.xHeight/2 && dragOffset.y < yOffsetText + richLine.capHeight + font.metrics.xHeight/2) {
-                        if(coordinates - richLine.width/2 > dragOffset.x && isFirstSelection) {
+                        if(coordinates + richLine.width/2 > dragOffset.x && isFirstSelection) {
                             startSelectionIndex = index
                             isFirstSelection = false
                         }
-                        if(coordinates - richLine.width/2 > dragOffset.x && isFist) {
-                            endSelectionIndex = if(index >= annotatedString.text.length-1) annotatedString.text.length else index
+                        if(coordinates + richLine.width/2 > dragOffset.x && isFist) {
+                            endSelectionIndex = index
                             isFist = false
                         }
                     }
@@ -247,7 +249,7 @@ fun AniJinRichText(
                     onSelection?.invoke(annotatedString.text.substring(rangeSelection), rangeSelection)
                 }
 
-                val isSelectedCurrentChar = (index in startSelectionIndex until endSelectionIndex) || (index in endSelectionIndex until startSelectionIndex)
+                val isSelectedCurrentChar = (index in startSelectionIndex..endSelectionIndex) || (index in endSelectionIndex..startSelectionIndex) && (endSelectionIndex != startSelectionIndex)
 
                 if(style.background != null && !isSelectedCurrentChar) {
                     fill.color = style.background?.toArgb()!!
@@ -321,11 +323,13 @@ fun AniJinRichText(
 
                 if(style.underLine != null) {
                     paint.color = style.underLine?.strokeColor ?: Color.White
+                    val underlinePosition = font.metrics.underlinePosition ?: (richLine.capHeight + 1.5f)
+                    val underlineThickness = font.metrics.underlineThickness ?: 1f
                     it.drawRect(
                         left = xOffsetText,
                         right = xOffsetText + richLine.width,
-                        top = yOffsetText + richLine.capHeight + 1.5f,
-                        bottom = yOffsetText + richLine.capHeight + ((style.underLine?.strokeWidth?.plus(1.5f)) ?: 1f),
+                        top = yOffsetText + richLine.capHeight + underlinePosition,
+                        bottom = yOffsetText + richLine.capHeight + underlinePosition + underlineThickness,
                         paint = paint
                     )
                 }
@@ -347,7 +351,8 @@ fun AniJinRichText(
                     fontSize,
                     rangesForMouseMoveData,
                     richTextDataCollect,
-                    it
+                    it,
+                    fontFamilyData,
                 ) { xOffsetText, yOffsetText ->
                     sizeTextBlock = Size(
                         width = max(xOffsetText, sizeTextBlock.width),
@@ -355,13 +360,6 @@ fun AniJinRichText(
                     )
                 }
             }
-
-        Toolkit.getDefaultToolkit().addAWTEventListener(
-            {
-                println(it)
-            },
-            AWTEvent.MOUSE_MOTION_EVENT_MASK
-        )
     }
 
     LaunchedEffect(annotatedString) {
@@ -373,7 +371,8 @@ fun AniJinRichText(
             fontSize,
             rangesForMouseMoveData,
             richTextDataCollect,
-            onSizeChanged
+            onSizeChanged,
+            fontFamilyData,
         ) { xOffsetText, yOffsetText ->
             sizeTextBlock = Size(
                 width = max(xOffsetText, sizeTextBlock.width),
@@ -389,6 +388,7 @@ fun onSize(
     rangesForMouseMoveData: MutableList<RangeHover>,
     richTextDataCollect: MutableList<RichTextDataCollect>,
     size: IntSize,
+    fontFamilyData: Data?,
     onSizeTextBlock: (Float, Float) -> Unit
 ) {
     var xOffsetText = 0f
@@ -413,19 +413,24 @@ fun onSize(
         if(isContinue) {
             val richStyleAndRange = annotatedString.getStyleFromIndex(index)
             val style = richStyleAndRange.richStyle
-            var fontBytes = ByteArray(0)
 
-            useResource("fonts/Montserrat-Medium.ttf") {
-                fontBytes = it.readAllBytes()
+            if(fontFamilyData != null) {
+                font = Font(
+                    typeface = Typeface.makeFromData(
+                        data = fontFamilyData
+                    ),
+                    size = style.fontSize?.value ?: fontSize.value
+                )
+            } else {
+                font = Font(
+                    typeface = Typeface.makeFromName(
+                        name = null,
+                        style = style.fontStyle ?: FontStyle.NORMAL
+                    ),
+                    size = style.fontSize?.value ?: fontSize.value
+                )
             }
 
-            font = Font(
-                typeface = Typeface.makeFromData(
-                    data = Data.makeFromBytes(fontBytes),
-                    index = FontStyle.Normal.value
-                ),
-                size = style.fontSize?.value ?: fontSize.value
-            )
             font.size = style.fontSize?.value ?: fontSize.value
             val richLine = TextLine.make(char.toString(), font)
             if(char == '\n') {
@@ -454,8 +459,10 @@ fun onSize(
             height = yOffsetText + richLine.capHeight + richLine.xHeight
         }
     }
-    richTextDataCollect.forEach {
-        it.richStyleAndRange.ranges.forEach { range ->
+
+    yOffsetText = 0f
+    richTextDataCollect.forEachIndexed { index, textData ->
+        textData.richStyleAndRange.ranges.forEach { range ->
             rangesForMouseMoveData.add(RangeHover(range.two))
         }
     }
@@ -474,7 +481,7 @@ data class RichTextDataCollect(
 
 data class RangeHover(
     val range: IntRange,
-    var isHover: Boolean = false,
+    var isHover: Boolean = false
 )
 
 fun createCornerRadius(
@@ -488,5 +495,27 @@ fun createCornerRadius(
         topRightRadius, topRightRadius,
         bottomRightRadius, bottomRightRadius,
         bottomLeftRadius, bottomLeftRadius
+    )
+}
+
+
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
+@Composable
+fun AniJinRichText(
+    text: String,
+    onSelection: ((String, IntRange) -> Unit)? = null,
+    selectionBackground: Color = Color.Blue,
+    fontSize: TextUnit = 16.sp,
+    style: RichStyle? = null,
+    fontFamilyData: Data? = null
+) {
+    AniJinRichText(
+        annotatedString = buildAniJinAnnotatedString(text) {
+            if(style != null) appendStyle(style, regex = { Regex("(.*)").findAll(text) })
+        },
+        onSelection = onSelection,
+        selectionBackground = selectionBackground,
+        fontSize = fontSize,
+        fontFamilyData = fontFamilyData
     )
 }

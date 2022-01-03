@@ -8,9 +8,13 @@ import androidx.compose.foundation.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.window.*
+import api.anijin.AniJinApi
 import com.arkivanov.decompose.ExperimentalDecomposeApi
 import component.windowTitleBar
 import theme.AniJinTheme
+import java.awt.AWTEvent
+import java.awt.Toolkit
+import javax.swing.SwingUtilities
 
 
 @OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class)
@@ -31,6 +35,13 @@ fun main(){
             title = "AniJin",
             undecorated = true
         ) {
+            Toolkit.getDefaultToolkit().addAWTEventListener(
+                {
+                    println(it)
+                },
+                AWTEvent.MOUSE_MOTION_EVENT_MASK
+            )
+
             AniJinTheme(
                 windowState = windowState
             ) {

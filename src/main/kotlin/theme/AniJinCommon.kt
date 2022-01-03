@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.window.WindowState
 import com.arkivanov.decompose.router.Router
+import component.anijin.richtext.dsl.engine.models.RichStyle
 import shared.root.RootComponent
 
 data class AniJinColor(
@@ -41,4 +42,8 @@ val LocalAniJinThemeTypography = staticCompositionLocalOf<AniJinTypography> {
 
 val LocalWindowState = staticCompositionLocalOf<WindowState> {
     error("No window state provided")
+}
+
+val LocalRichStyle = staticCompositionLocalOf<RichStyle> {
+    error("No rich style provided")
 }

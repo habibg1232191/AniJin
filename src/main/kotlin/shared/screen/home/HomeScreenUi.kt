@@ -4,16 +4,24 @@ import androidx.compose.animation.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.Button
 import androidx.compose.material.Text
+import androidx.compose.material.TextField
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalFontLoader
+import androidx.compose.ui.platform.LocalTextInputService
+import androidx.compose.ui.res.useResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.platform.Font
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import api.anijin.AniJinApi
@@ -23,9 +31,12 @@ import component.anijin.richtext.dsl.engine.models.RichStyle
 import component.anijin.richtext.dsl.engine.models.RichStyleRanges
 import component.anijin.richtext.dsl.engine.models.UnderLine
 import component.anijin.richtext.dsl.engine.models.tryGetColor
+import component.anijin.richtext.fontLoader
 import kotlinx.coroutines.delay
+import org.jetbrains.skia.Data
 import org.jetbrains.skia.FontStyle
 import shared.defaultComponentContext.defaultComponentContext
+import shared.screen.home.component.TopAnimeCurrentYear
 import theme.AniJinTheme
 import theme.LocalWindowState
 
@@ -53,9 +64,14 @@ fun HomeScreenUi(
         val models = component.models.value
         var topAnimeCurrentYearStateLoading = models.topAnimeCurrentYearStateLoading
         var topAnimeCurrentYear = models.topAnimeCurrentYear
+        val textInputService = LocalTextInputService.current
 
         SelectionContainer {
             Box(Modifier.fillMaxWidth()) {
+//                AniJinRichText(
+//                    text = "Лучшее за сезон",
+//                    fontSize = 20.sp
+//                )
                 Text(
                     text = "Лучшее за сезон",
                     style = AniJinTheme.typography.header,
@@ -65,17 +81,17 @@ fun HomeScreenUi(
             }
         }
 
-        LaunchedEffect(Unit) {
-            topAnimeCurrentYearStateLoading = HomeScreen.TopAnimeCurrentYearStateLoading.LOADING
-            AniJinApi.topAnimeSeason.get()
-                .onSuccess {
-                    topAnimeCurrentYear = it
-                    topAnimeCurrentYearStateLoading = HomeScreen.TopAnimeCurrentYearStateLoading.LOADED
-                }
-                .onFailure {
-                    topAnimeCurrentYearStateLoading = HomeScreen.TopAnimeCurrentYearStateLoading.ERROR
-                }
-        }
+//        LaunchedEffect(Unit) {
+//            topAnimeCurrentYearStateLoading = HomeScreen.TopAnimeCurrentYearStateLoading.LOADING
+//            AniJinApi.topAnimeSeason.get()
+//                .onSuccess {
+//                    topAnimeCurrentYear = it
+//                    topAnimeCurrentYearStateLoading = HomeScreen.TopAnimeCurrentYearStateLoading.LOADED
+//                }
+//                .onFailure {
+//                    topAnimeCurrentYearStateLoading = HomeScreen.TopAnimeCurrentYearStateLoading.ERROR
+//                }
+//        }
 
 //        Box(
 //            modifier = Modifier
@@ -129,20 +145,14 @@ fun HomeScreenUi(
 //            }.onFailure {
 //                println(it)
 //            }
-//            ShikimoriApi.anime.getAnimes(
-//                AnimeQuery(
-//                    order = AnimeOrder.POPULARITY,
-//                    season = "fall_2021",
-//                    limit = 50,
-//                    page = 2
-//                )
-//            ).onSuccess {
-//                animes = animes + it
-//            }.onFailure {
-//                println(it)
-//            }
 //        }
 //
+//        Text(
+//            text = "Лучшее за месяц",
+//            fontSize = 16.sp,
+//            modifier = Modifier.padding(top = 5.dp, bottom = 2.dp)
+//        )
+
 //        Box(
 //            Modifier.clip(RoundedCornerShape(4.dp)).clipToBounds()
 //        ) {
@@ -168,11 +178,15 @@ fun HomeScreenUi(
 //            }
 //        }
 
-        var isTextDeleted by remember { mutableStateOf(false) }
-
+        var fontFamilyData by remember { mutableStateOf<Data?>(null) }
+        LaunchedEffect(Unit) {
+            useResource("fonts/Montserrat-Regular.ttf") {
+                fontFamilyData = Data.makeFromBytes(it.readAllBytes())
+            }
+        }
         AniJinRichText(
             annotatedString = buildAniJinAnnotatedString(
-                text = "これは日本人です; Это русский;😁😀😎 backText in 992 y. 2H\nThis ᴴᴰ is English [span color=\"#0000\" background=\"#424242\"]Text[/span]\nText On Placed Yeeee"
+                text = "これは日本人です; Это русский;😁😀😎 backText in 992 y. 2H\nThis ᴴᴰ is English [span color=\"#0000\" background=\"#424242\"]Text[/span]\nText On Placed Yes"
             ) {
                 appendStyle(richStyle = RichStyle(color = Color.Gray)) { Regex("[0-9]").findAll(it) }
                 appendStyle(richStyle = RichStyle(color = Color.Gray)) { Regex("<(.*?)>").findAll(it) }
@@ -180,53 +194,18 @@ fun HomeScreenUi(
 
                 appendStyle(
                     richStyle = RichStyle(
-                        underLine = UnderLine(strokeWidth = 1.5f, strokeColor = Color.White),
-                        onClick = {
-                            println("Click Text: ${it.text[it.index]}")
-                        },
-                        onMove = {
-                            println("Move Text: ${it.text[it.index]}")
-                        }
-                    )
-                ) {
-                    Regex("Это русский").findAll(it)
-                }
-
-                appendStyle(
-                    richStyle = RichStyle(
-                        fontStyle = FontStyle.ITALIC,
-                        onClick = {
-                            println(it.text[it.index])
-                        },
-                        onMove = {
-//                            println("Move")
-                        },
-                        onEnter = {
-                            println("Enter")
-                        },
-                        onExit = {
-                            println("Exit")
-                        }
-                    )
-                ) {
-                    Regex("backText").findAll(it)
-                }
-
-                appendStyle(
-                    richStyle = RichStyle(
-                        fontStyle = FontStyle.ITALIC,
-                        onClick = {
-                            println(it.text[it.index])
-                        },
-                        onEnter = {
-                            println("Enter")
-                        },
-                        onExit = {
-                            println("Exit")
-                        }
+                        fontStyle = FontStyle.ITALIC
                     )
                 ) {
                     Regex("Text").findAll(it)
+                }
+
+                appendStyle(
+                    richStyle = RichStyle(
+                        underLine = UnderLine()
+                    )
+                ) {
+                    Regex("Это русский").findAll(it)
                 }
 
                 appendStyle(
@@ -237,6 +216,7 @@ fun HomeScreenUi(
                         shape = CircleShape
                     )
                 ) { Regex("background").findAll(it) }
+
                 appendStyleWithRegex { text ->
                     val resRangeList = mutableListOf<IntRange>()
                     val parametersString = listOf(
@@ -271,44 +251,28 @@ fun HomeScreenUi(
                         ranges = resRangeList
                     )
                 }
-
-                if(isTextDeleted) {
-                    hideFirstText { Regex("backgroundText").find(it) }
-                    hideText { Regex("\\[(.*?)\\]").findAll(it) }
-                }
             },
             selectionBackground = Color.Blue,
-            fontSize = 26.sp
+            fontSize = 26.sp,
+            fontFamilyData = fontFamilyData
         )
-        Button(
-            onClick = { isTextDeleted = !isTextDeleted }
-        ) {
-            Text(
-                text = "Show/Hide Text"
-            )
-        }
+        var isHidden by remember { mutableStateOf(false) }
 
-//        Box(
-//            Modifier.clip(RoundedCornerShape(12.dp)).clipToBounds()
-//        ) {
-//            Carousel(carouselState) {
-//                repeat(100) { i ->
-//                    Box(
-//                        Modifier
-//                            .padding(start = 6.dp, end = 6.dp)
-//                            .background(color = MaterialTheme.colors.primary, shape = RoundedCornerShape(12.dp))
-//                            .size(180.dp, 300.dp)
-//                            .clickable { println(i) }
-//                    ) {
-//                        Text(
-//                            text = "$i",
-//                            fontSize = 25.sp,
-//                            modifier = Modifier.align(Alignment.Center)
-//                        )
-//                    }
-//                }
-//            }
-//        }
+        Button(
+            onClick = { isHidden = !isHidden }
+        ) {
+            AnimatedContent(
+                targetState = isHidden,
+                transitionSpec = {
+                    scaleIn() + fadeIn() with scaleOut(targetScale = 2f) + fadeOut()
+                }
+            ) { state ->
+                Text(
+                    text = if(state) "Hidden" else "Show",
+                    fontSize = 18.sp
+                )
+            }
+        }
     }
 }
 

@@ -4,7 +4,7 @@ data class AniJinAnnotatedString(
     val text: String,
     val replaceRange: List<IntRange>,
     val rangeStyles: Map<IntRange, RichStyle>,
-    val styles: List<RichStyle>
+    val styles: MutableList<RichStyle>
 ) {
     fun getStyleFromIndex(index: Int): RichStyleAndRange {
         val resStyle = RichStyle()
@@ -19,6 +19,10 @@ data class AniJinAnnotatedString(
             richStyle = resStyle,
             ranges = resRange
         )
+    }
+
+    fun appendStyle(style: RichStyle) {
+        styles.add(0, style)
     }
 }
 

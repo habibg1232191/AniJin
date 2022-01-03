@@ -4,6 +4,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.pointer.PointerEvent
 import androidx.compose.ui.unit.TextUnit
 import component.anijin.richtext.RichTextDataCollect
 import org.jetbrains.skia.FontStyle
@@ -45,7 +46,7 @@ data class UnderLine(
 
 data class MouseRichEvent(
     val richStyle: RichStyle,
-    val mousePosition: Offset,
+    val mouseEvent: PointerEvent,
     val offsetText: Offset,
     val text: String,
     val range: IntRange,

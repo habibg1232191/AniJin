@@ -4,6 +4,9 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -22,22 +25,15 @@ fun AnimatedColor(
     animationSpec: AnimationSpec<Color> = tween(100),
     content: @Composable Color.() -> Unit
 ){
-    var isHover by remember { mutableStateOf(false) }
+    val interactiveSource = remember { MutableInteractionSource() }
+
+    val isHover by interactiveSource.collectIsHoveredAsState()
     val colorHovered = animateColorAsState(
         targetValue = if(isHover) hoverColor else defaultColor,
         animationSpec = animationSpec
     )
 
-    Box(modifier.pointerMoveFilter(
-        onEnter = {
-            isHover = true
-            false
-        },
-        onExit = {
-            isHover = false
-            false
-        }
-    ).then(modifier)){
+    Box(modifier.hoverable(interactiveSource).then(modifier)){
         content(colorHovered.value)
     }
 }
@@ -49,20 +45,15 @@ fun Modifier.hoverColor(
     hoverColor: Color,
     animationSpec: AnimationSpec<Color> = tween()
 ): Modifier {
-    var isHovering by remember { mutableStateOf(false) }
-    val animateColor by animateColorAsState(
-        targetValue = if(isHovering) hoverColor else defaultColor,
+    val interactiveSource = remember { MutableInteractionSource() }
+
+    val isHover by interactiveSource.collectIsHoveredAsState()
+    val animateColor = animateColorAsState(
+        targetValue = if(isHover) hoverColor else defaultColor,
         animationSpec = animationSpec
     )
 
     return this.then(
-        Modifier
-            .background(animateColor)
-            .onPointerEvent(PointerEventType.Enter) {
-                isHovering = true
-            }
-            .onPointerEvent(PointerEventType.Exit) {
-                isHovering = false
-            }
+        Modifier.hoverable(interactiveSource).background(animateColor.value)
     )
 }

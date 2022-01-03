@@ -6,6 +6,8 @@ import com.arkivanov.decompose.router.push
 import com.arkivanov.decompose.router.router
 import com.arkivanov.decompose.value.Value
 import com.arkivanov.essenty.parcelable.Parcelable
+import shared.screen.animePage.AnimePage
+import shared.screen.animePage.AnimePageComponent
 import shared.screen.home.HomeScreen
 import shared.screen.home.HomeScreenComponent
 
@@ -27,15 +29,22 @@ class RootComponent(
 
     private fun createChild(config: Config, componentContext: ComponentContext): Root.Child =
         when (config) {
-            is Config.HomeScreen -> Root.Child.HomeScreen(itemHomeScreen(componentContext) as HomeScreenComponent)
+            is Config.HomeScreen -> Root.Child.HomeScreen(itemHomeScreen(componentContext))
+            is Config.AnimePage -> Root.Child.AnimePage(itemAnimePage(componentContext))
         }
 
-    private fun itemHomeScreen(componentContext: ComponentContext): HomeScreen =
+    private fun itemAnimePage(componentContext: ComponentContext): AnimePageComponent =
+        AnimePageComponent(
+            componentContext = componentContext
+        )
+
+    private fun itemHomeScreen(componentContext: ComponentContext): HomeScreenComponent =
         HomeScreenComponent(
             componentContext = componentContext
         )
 
     sealed class Config : Parcelable {
         object HomeScreen : Config()
+        object AnimePage : Config()
     }
 }

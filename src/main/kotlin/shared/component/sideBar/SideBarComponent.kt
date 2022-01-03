@@ -25,7 +25,7 @@ class SideBarComponent(
             SideBar.Tab(
                 name = "Search",
                 tooltipText = "Поиск",
-                configRoute = RootComponent.Config.HomeScreen,
+                configRoute = RootComponent.Config.AnimePage,
             ),
             SideBar.Tab(
                 name = "Star",

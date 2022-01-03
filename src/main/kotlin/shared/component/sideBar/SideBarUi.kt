@@ -61,7 +61,7 @@ fun SideBar(
                 ) {
                     Spacer(Modifier.height(spaceIcons))
                     IconButton(
-                        onClick = {  },
+                        onClick = { onNavigate(tab.configRoute) },
                         modifier = Modifier
                             .padding(0.dp)
                             .pointerMoveFilter(

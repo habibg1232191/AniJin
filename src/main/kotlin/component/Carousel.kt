@@ -2,20 +2,17 @@ package component
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.mouse.mouseScrollFilter
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.*
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
-import kotlin.math.absoluteValue
-import kotlin.math.max
-import kotlin.math.pow
-import kotlin.math.roundToInt
+import java.awt.Cursor
+import kotlin.math.*
 
 @Composable
 fun rememberCarouselState(initialValue: Float = 0f): CarouselState {
@@ -47,25 +44,28 @@ fun Carousel(
     var placeable: List<Placeable> = listOf()
     var maxWidth by remember { mutableStateOf(0) }
 
-    val xScrollForAnimate by animateFloatAsState(carouselState.value)
+    val xScrollForAnimate by animateFloatAsState(
+        targetValue = carouselState.value
+    )
+
     Layout(
         content = content,
         modifier = Modifier
-            .mouseScrollFilter { event, _ ->
-                var isMouseScrollFilter = true
-                if(event.delta.toString() != "Line(value=3.0)")
-                {
+            .pointerHoverIcon(PointerIcon(Cursor.getPredefinedCursor(Cursor.TEXT_CURSOR)))
+            .onPointerEvent(PointerEventType.Scroll) {
+                val scrollDelta = it.changes.first().scrollDelta.y
+                var consumedScroll = true
+
+                if(scrollDelta < 0) {
                     if (carouselState.currentScrollIndex < placeable.size - 1 && carouselState.value > maxWidth - placeable.getWidth().toFloat())
                         carouselState.currentScrollIndex += 1
                     else
-                        isMouseScrollFilter = false
-                }
-                else
-                {
+                        consumedScroll = false
+                } else {
                     if (carouselState.currentScrollIndex > 0)
                         carouselState.currentScrollIndex -= 1
                     else
-                        isMouseScrollFilter = false
+                        consumedScroll = false
                 }
 
                 var scrollXPos = 0
@@ -79,18 +79,19 @@ fun Carousel(
                 else if (carouselState.value < maxWidth - placeable.getWidth().toFloat())
                     carouselState.value = maxWidth - placeable.getWidth().toFloat()
 
-                isMouseScrollFilter
+                if(consumedScroll) it.changes.first().consume()
             }
             .pointerInput(Unit) {
                 detectHorizontalDragGestures(
                     onHorizontalDrag = { _, dragAmount ->
                         val placeableWidth = placeable.getWidth().toFloat()
+                        val coeff = 1f
 
                         val dif = if(carouselState.value > 1) {
-                            dragAmount / 1.4f.pow(carouselState.value.absoluteValue / 10)
+                            dragAmount / treeshold(carouselState.value.absoluteValue, coeff)
                         } else if (carouselState.value < maxWidth - placeableWidth) {
                             val coefficient = -(placeableWidth - carouselState.value.absoluteValue - maxWidth)
-                            dragAmount / 1.4f.pow(coefficient.absoluteValue / 10)
+                            dragAmount / treeshold(coefficient.absoluteValue, coeff)
                         } else {
                             dragAmount
                         }
@@ -149,7 +150,7 @@ fun Carousel(
         layout(constraints.maxWidth, maxHeight) {
             var xPosition = xScrollForAnimate.roundToInt()
 
-            placeable.forEachIndexed { index, placeable ->
+            placeable.forEachIndexed { _, placeable ->
                 placeable.place(x = xPosition, y = 0)
                 xPosition += placeable.width
             }
@@ -164,3 +165,6 @@ fun List<Placeable>.getWidth(): Int {
     }
     return width
 }
+
+fun treeshold(value: Float, coeff: Float): Float
+    = sqrt(value * coeff)
